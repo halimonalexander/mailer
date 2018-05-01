@@ -70,7 +70,12 @@ class Mailer{
   
     $this->phpMailer->Username = $this->config['address'];
     $this->phpMailer->Password = $this->config['password'];
-    $this->phpMailer->setFrom(new Sender($this->config['address'], $this->config['username']));
+  
+    $sender = new Sender($this->config['address'], $this->config['username']);
+    $this->phpMailer->setFrom(
+      $sender->getEmail(),
+      $sender->getName()
+    );
   
     if ( !empty($this->config['replyto_address']) )
       $this->phpMailer->addReplyTo($this->config['replyto_address'], $this->config['replyto_name']);
@@ -102,11 +107,11 @@ class Mailer{
     $htmlBody = $template->getHtmlBody();
     if (!empty($htmlBody)) {
       $this->phpMailer->isHTML(true);
-      $this->Body = $template->getHtmlBody();
+      $this->phpMailer->Body = $htmlBody;
     }
   
-    $this->AltBody = $template->getPlaintextBody();
-    $this->Subject = $template->getSubject();
+    $this->phpMailer->AltBody = $template->getPlaintextBody();
+    $this->phpMailer->Subject = $template->getSubject();
 
     foreach ($template->getAttachments() as $attachment)
       $this->phpMailer->addAttachment($attachment->getPath(), $attachment->getName());

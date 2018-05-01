@@ -11,6 +11,6 @@ declare(strict_types=1);
 
 namespace HalimonAlexander\Mailer;
 
-final class Sender
+final class Sender extends Person
 {
 }

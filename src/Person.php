@@ -16,10 +16,10 @@ abstract class Person
     private $email;
     private $name;
 
-    function __construct($name, $email)
+    function __construct($email, $name)
     {
-        $this->name = $name;
         $this->email = $email;
+        $this->name = $name;
     }
 
     public function getEmail()
