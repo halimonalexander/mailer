@@ -15,8 +15,7 @@ use Exception;
 use InvalidArgumentException;
 
 use HalimonAlexander\MailTemplater\{
-  Attachment,
-  Template
+    Attachment, Exceptions\InvalidMarkup, Template
 };
 
 use PHPMailer\PHPMailer\{
@@ -24,109 +23,117 @@ use PHPMailer\PHPMailer\{
   Exception as MailSendException
 };
 
-class Mailer{
-  
-  private $phpMailer;
-  private $config;
-  
-  function __construct($config)
-  {
-    $this->config = $config;
-    
-    $this->phpMailer = new PHPMailer(true);
-    
-    $this->setup();
-  }
-  
-  private function setup()
-  {
-    $this->phpMailer->isSMTP();
-    $this->phpMailer->SMTPDebug = 0;
-    $this->phpMailer->Debugoutput = 'error_log';
-    $this->phpMailer->Mailer = "smtp";
-  
-    $this->phpMailer->SMTPAuth = true;
-  
-    $this->phpMailer->clearAllRecipients();
-    $this->phpMailer->clearAddresses();
-    $this->phpMailer->clearCCs();
-    $this->phpMailer->clearBCCs();
-    $this->phpMailer->clearReplyTos();
-    $this->phpMailer->clearAttachments();
-    $this->phpMailer->clearCustomHeaders();
-    
-    $this->applyConfig();
-  
-    $this->phpMailer->CharSet = 'UTF-8';
-    $this->phpMailer->WordWrap = 80;
-    $this->phpMailer->isHTML(true);
-  }
-  
-  private function applyConfig()
-  {
-    $this->phpMailer->SMTPSecure = isset($this->config['secure']) ? $this->config['secure'] : 'ssl';
-    $this->phpMailer->Host       = isset($this->config['host']) ? $this->config['host'] : 'smtp.zoho.com';
-    $this->phpMailer->Port       = isset($this->config['port']) ? $this->config['port'] : 465;
-  
-    $this->phpMailer->Username = $this->config['address'];
-    $this->phpMailer->Password = $this->config['password'];
-  
-    $sender = new Sender($this->config['address'], $this->config['username']);
-    $this->phpMailer->setFrom(
-      $sender->getEmail(),
-      $sender->getName()
-    );
-  
-    if ( !empty($this->config['replyto_address']) )
-      $this->phpMailer->addReplyTo($this->config['replyto_address'], $this->config['replyto_name']);
-  }
-  
-  /**
-   * @param Recipient|Recipient[]  $recipients
-   * @param                        $from
-   * @param Template           $template
-   *
-   * @return bool
-   * @throws \PHPMailer\PHPMailer\Exception
-   * @throws InvalidArgumentException
-   */
-  function doSend($recipients, $from, Template $template) {
-    if (!is_array($recipients)) {
-      if ($recipients instanceof Recipient)
-        $recipients = [$recipients];
-      else
-        throw new InvalidArgumentException('Recipient is invalid');
-    }
-  
-    foreach ($recipients as $recipient)
-      $this->phpMailer->addAddress(
-        $recipient->getEmail(),
-        $recipient->getName()
-      );
-  
-    $htmlBody = $template->getHtmlBody();
-    if (!empty($htmlBody)) {
-      $this->phpMailer->isHTML(true);
-      $this->phpMailer->Body = $htmlBody;
-    }
-  
-    $this->phpMailer->AltBody = $template->getPlaintextBody();
-    $this->phpMailer->Subject = $template->getSubject();
+class Mailer
+{
+    /**
+     * @var PHPMailer
+     */
+    private $phpMailer;
 
-    foreach ($template->getAttachments() as $attachment)
-      $this->phpMailer->addAttachment($attachment->getPath(), $attachment->getName());
-    
-    try{
-      $status = $this->phpMailer->send();
-    } catch (MailSendException $e) {
-      echo $e->errorMessage();
-      return false;
-    } catch (Exception $e) {
-      echo $e->getMessage();
-      return false;
+    /**
+     * @var array
+     */
+    private $config;
+  
+    public function __construct($config)
+    {
+        $this->config = $config;
+
+        $this->phpMailer = new PHPMailer(true);
+
+        $this->setup();
     }
-    
-    return $status;
-  }
+  
+    private function setup()
+    {
+        $this->phpMailer->isSMTP();
+        $this->phpMailer->SMTPDebug = 0;
+        $this->phpMailer->Debugoutput = 'error_log';
+        $this->phpMailer->Mailer = "smtp";
+
+        $this->phpMailer->SMTPAuth = true;
+
+        $this->phpMailer->clearAllRecipients();
+        $this->phpMailer->clearAddresses();
+        $this->phpMailer->clearCCs();
+        $this->phpMailer->clearBCCs();
+        $this->phpMailer->clearReplyTos();
+        $this->phpMailer->clearAttachments();
+        $this->phpMailer->clearCustomHeaders();
+
+        $this->applyConfig();
+
+        $this->phpMailer->CharSet = 'UTF-8';
+        $this->phpMailer->WordWrap = 80;
+        $this->phpMailer->isHTML(true);
+    }
+  
+    private function applyConfig()
+    {
+        $this->phpMailer->SMTPSecure = isset($this->config['secure']) ? $this->config['secure'] : 'ssl';
+        $this->phpMailer->Host       = isset($this->config['host']) ? $this->config['host'] : 'smtp.zoho.com';
+        $this->phpMailer->Port       = isset($this->config['port']) ? $this->config['port'] : 465;
+
+        $this->phpMailer->Username = $this->config['address'];
+        $this->phpMailer->Password = $this->config['password'];
+
+        $sender = new Sender($this->config['address'], $this->config['username']);
+
+        $this->phpMailer->setFrom(
+            $sender->getEmail(),
+            $sender->getName()
+        );
+
+        if ( !empty($this->config['replyto_address']) )
+            $this->phpMailer->addReplyTo($this->config['replyto_address'], $this->config['replyto_name']);
+    }
+  
+    /**
+     * @param Recipient|Recipient[] $recipients
+     * @param Template $template
+     *
+     * @return bool
+     * @throws \PHPMailer\PHPMailer\Exception
+     * @throws InvalidArgumentException
+     * @throws InvalidMarkup
+     */
+    public function doSend($recipients, Template $template)
+    {
+        if (!is_array($recipients)) {
+            if ($recipients instanceof Recipient)
+                $recipients = [$recipients];
+            else
+                throw new InvalidArgumentException('Recipient is invalid');
+        }
+
+        foreach ($recipients as $recipient)
+            $this->phpMailer->addAddress(
+                $recipient->getEmail(),
+                $recipient->getName()
+            );
+
+        $htmlBody = $template->getHtmlBody();
+        if (!empty($htmlBody)) {
+            $this->phpMailer->isHTML(true);
+            $this->phpMailer->Body = $htmlBody;
+        }
+
+        $this->phpMailer->AltBody = $template->getPlaintextBody();
+        $this->phpMailer->Subject = $template->getSubject();
+
+        foreach ($template->getAttachments() as $attachment)
+            $this->phpMailer->addAttachment($attachment->getPath(), $attachment->getName());
+
+        try{
+            $status = $this->phpMailer->send();
+        } catch (MailSendException $e) {
+            echo $e->errorMessage();
+            return false;
+        } catch (Exception $e) {
+            echo $e->getMessage();
+            return false;
+        }
+
+        return $status;
+    }
 }
-
