@@ -9,8 +9,8 @@
  */
 declare(strict_types=1);
 
-namespace HalimonAlexander\Mailer;
+namespace HalimonAlexander\Mailer\Persons;
 
-final class Sender extends Person
+final class Sender extends AbstractPerson
 {
 }

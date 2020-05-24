@@ -11,17 +11,21 @@ declare(strict_types=1);
 
 namespace HalimonAlexander\Mailer;
 
-use Exception;
-use InvalidArgumentException;
+use HalimonAlexander\Mailer\Persons\Recipient;
+use HalimonAlexander\Mailer\Persons\Sender;
 
 use HalimonAlexander\MailTemplater\{
-    Attachment, Exceptions\InvalidMarkup, Template
+    Exceptions\InvalidMarkup,
+    Template
 };
 
 use PHPMailer\PHPMailer\{
   PHPMailer,
   Exception as MailSendException
 };
+
+use Exception;
+use InvalidArgumentException;
 
 class Mailer
 {
