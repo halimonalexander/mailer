@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace HalimonAlexander\Mailer\Persons;
 
+use RuntimeException;
+
 abstract class AbstractPerson
 {
     /**
@@ -31,8 +33,8 @@ abstract class AbstractPerson
      */
     function __construct(string $email, string $name = null)
     {
-        $this->email = $email;
-        $this->name = $name;
+        $this->setEmail($email);
+        $this->setName($name);
     }
 
     /**
@@ -43,11 +45,29 @@ abstract class AbstractPerson
         return $this->email;
     }
 
+    private function setEmail(string $email): void
+    {
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new RuntimeException('Email is invalid');
+        }
+
+        $this->email = $email;
+    }
+
     /**
      * @return string|null
      */
     public function getName(): ?string
     {
         return $this->name;
+    }
+
+    public function setName(?string $name): void
+    {
+        if ($name !== null && empty($name)) {
+            $name = null;
+        }
+
+        $this->name = $name;
     }
 }
