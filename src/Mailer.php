@@ -1,4 +1,5 @@
 <?php
+
 /*
  * This file is part of Mailer.
  *
@@ -7,6 +8,7 @@
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  */
+
 declare(strict_types=1);
 
 namespace HalimonAlexander\Mailer;
@@ -19,6 +21,7 @@ use HalimonAlexander\MailTemplater\{
     Template
 };
 
+use http\Exception\RuntimeException;
 use PHPMailer\PHPMailer\{
   PHPMailer,
   Exception as MailSendException
@@ -43,20 +46,47 @@ class Mailer
     {
         $this->config = $config;
 
-        $this->phpMailer = new PHPMailer(true);
-
         $this->setup();
     }
   
     private function setup()
     {
+        $this->phpMailer = new PHPMailer(true);
+        $this->phpMailer->Debugoutput = 'error_log';
+
+        $this->setupSMTP();
+        $this->clearPhpMailer();
+        $this->setCredentials();
+
+        $this->phpMailer->CharSet = 'UTF-8';
+        $this->phpMailer->WordWrap = 80;
+    }
+
+    /**
+     * @return void
+     *
+     * @throws \RuntimeException
+     */
+    private function setupSMTP(): void
+    {
+        if (
+            !array_key_exists('secure', $this->config) ||
+            !array_key_exists('host', $this->config) ||
+            !array_key_exists('port', $this->config)
+        ) {
+            throw new \RuntimeException('SMTP config is not set');
+        }
+
         $this->phpMailer->isSMTP();
         $this->phpMailer->SMTPDebug = 0;
-        $this->phpMailer->Debugoutput = 'error_log';
-        $this->phpMailer->Mailer = "smtp";
 
-        $this->phpMailer->SMTPAuth = true;
+        $this->phpMailer->SMTPSecure = $this->config['secure'];
+        $this->phpMailer->Host       = $this->config['host'];
+        $this->phpMailer->Port       = $this->config['port'];
+    }
 
+    private function clearPhpMailer(): void
+    {
         $this->phpMailer->clearAllRecipients();
         $this->phpMailer->clearAddresses();
         $this->phpMailer->clearCCs();
@@ -64,32 +94,45 @@ class Mailer
         $this->phpMailer->clearReplyTos();
         $this->phpMailer->clearAttachments();
         $this->phpMailer->clearCustomHeaders();
-
-        $this->applyConfig();
-
-        $this->phpMailer->CharSet = 'UTF-8';
-        $this->phpMailer->WordWrap = 80;
-        $this->phpMailer->isHTML(true);
     }
-  
-    private function applyConfig()
+
+    /**
+     * @return void
+     *
+     * @throws \RuntimeException
+     */
+    private function setCredentials(): void
     {
-        $this->phpMailer->SMTPSecure = isset($this->config['secure']) ? $this->config['secure'] : 'ssl';
-        $this->phpMailer->Host       = isset($this->config['host']) ? $this->config['host'] : 'smtp.zoho.com';
-        $this->phpMailer->Port       = isset($this->config['port']) ? $this->config['port'] : 465;
+        $this->phpMailer->SMTPAuth = true;
 
-        $this->phpMailer->Username = $this->config['address'];
-        $this->phpMailer->Password = $this->config['password'];
+        if (
+            !array_key_exists('address', $this->config) ||
+            !array_key_exists('password', $this->config)
+        ) {
+            throw new \RuntimeException('SMTP credentials are not provided');
+        }
 
-        $sender = new Sender($this->config['address'], $this->config['username']);
+        $this->phpMailer->Username   = $this->config['address'];
+        $this->phpMailer->Password   = $this->config['password'];
 
-        $this->phpMailer->setFrom(
-            $sender->getEmail(),
-            $sender->getName()
-        );
+        if (array_key_exists('address', $this->config)) {
+            try {
+                $this->phpMailer->setFrom(
+                    $this->config['address'],
+                    $this->config['username']
+                );
+            } catch (\PHPMailer\PHPMailer\Exception $exception) {
+                throw new \RuntimeException($exception->getMessage(), $exception->getCode(), $exception);
+            }
+        }
 
-        if ( !empty($this->config['replyto_address']) )
-            $this->phpMailer->addReplyTo($this->config['replyto_address'], $this->config['replyto_name']);
+        if (array_key_exists('replyto_address', $this->config)) {
+            try {
+                $this->phpMailer->addReplyTo($this->config['replyto_address'], $this->config['replyto_name']);
+            } catch (\PHPMailer\PHPMailer\Exception $exception) {
+                throw new \RuntimeException($exception->getMessage(), $exception->getCode(), $exception);
+            }
+        }
     }
   
     /**
@@ -97,36 +140,13 @@ class Mailer
      * @param Template $template
      *
      * @return bool
-     * @throws \PHPMailer\PHPMailer\Exception
-     * @throws InvalidArgumentException
-     * @throws InvalidMarkup
      */
     public function doSend($recipients, Template $template)
     {
-        if (!is_array($recipients)) {
-            if ($recipients instanceof Recipient)
-                $recipients = [$recipients];
-            else
-                throw new InvalidArgumentException('Recipient is invalid');
-        }
-
-        foreach ($recipients as $recipient)
-            $this->phpMailer->addAddress(
-                $recipient->getEmail(),
-                $recipient->getName()
-            );
-
-        $htmlBody = $template->getHtmlBody();
-        if (!empty($htmlBody)) {
-            $this->phpMailer->isHTML(true);
-            $this->phpMailer->Body = $htmlBody;
-        }
-
-        $this->phpMailer->AltBody = $template->getPlaintextBody();
-        $this->phpMailer->Subject = $template->getSubject();
-
-        foreach ($template->getAttachments() as $attachment)
-            $this->phpMailer->addAttachment($attachment->getPath(), $attachment->getName());
+        $this->setRecipients($recipients);
+        $this->setSubject($template);
+        $this->setBody($template);
+        $this->setAttachments($template);
 
         try{
             $status = $this->phpMailer->send();
@@ -139,5 +159,62 @@ class Mailer
         }
 
         return $status;
+    }
+
+    private function setRecipients($recipients): void
+    {
+        if (!is_array($recipients)) {
+            if (!($recipients instanceof Recipient)) {
+                throw new InvalidArgumentException('Recipient is invalid');
+            }
+
+            $recipients = [$recipients];
+        }
+
+        foreach ($recipients as $recipient) {
+            $this->phpMailer->addAddress(
+                $recipient->getEmail(),
+                $recipient->getName()
+            );
+        }
+    }
+
+    private function setSubject(Template $template): void
+    {
+        $this->phpMailer->Subject = $template->getSubject();
+    }
+
+    private function setBody(Template $template): void
+    {
+        $htmlBody = $template->getHtmlBody();
+        if (!empty($htmlBody)) {
+            $this->phpMailer->isHTML(true);
+            $this->phpMailer->Body = $htmlBody;
+        } else {
+            $this->phpMailer->isHTML(false);
+        }
+
+        $this->phpMailer->AltBody = $template->getPlaintextBody();
+    }
+
+    /**
+     * @param Template $template
+     *
+     * @return void
+     *
+     * @throws \RuntimeException
+     */
+    private function setAttachments(Template $template): void
+    {
+        foreach ($template->getAttachments() as $attachment) {
+            try {
+                $this->phpMailer->addAttachment(
+                    $attachment->getPath(),
+                    $attachment->getName()
+                );
+            } catch (\PHPMailer\PHPMailer\Exception $exception) {
+                throw new \RuntimeException($exception->getMessage(), $exception->getCode(), $exception);
+            }
+        }
     }
 }
