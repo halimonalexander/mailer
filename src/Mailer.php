@@ -14,20 +14,18 @@ declare(strict_types=1);
 namespace HalimonAlexander\Mailer;
 
 use HalimonAlexander\Mailer\Persons\Recipient;
-use HalimonAlexander\Mailer\Persons\Sender;
 
 use HalimonAlexander\MailTemplater\{
-    Exceptions\InvalidMarkup,
     Template
 };
 
-use http\Exception\RuntimeException;
 use PHPMailer\PHPMailer\{
   PHPMailer,
   Exception as MailSendException
 };
 
 use Exception;
+use RuntimeException;
 use InvalidArgumentException;
 
 class Mailer
@@ -65,7 +63,7 @@ class Mailer
     /**
      * @return void
      *
-     * @throws \RuntimeException
+     * @throws RuntimeException
      */
     private function setupSMTP(): void
     {
@@ -74,7 +72,7 @@ class Mailer
             !array_key_exists('host', $this->config) ||
             !array_key_exists('port', $this->config)
         ) {
-            throw new \RuntimeException('SMTP config is not set');
+            throw new RuntimeException('SMTP config is not set');
         }
 
         $this->phpMailer->isSMTP();
@@ -99,7 +97,7 @@ class Mailer
     /**
      * @return void
      *
-     * @throws \RuntimeException
+     * @throws RuntimeException
      */
     private function setCredentials(): void
     {
@@ -109,7 +107,7 @@ class Mailer
             !array_key_exists('address', $this->config) ||
             !array_key_exists('password', $this->config)
         ) {
-            throw new \RuntimeException('SMTP credentials are not provided');
+            throw new RuntimeException('SMTP credentials are not provided');
         }
 
         $this->phpMailer->Username   = $this->config['address'];
@@ -121,16 +119,16 @@ class Mailer
                     $this->config['address'],
                     $this->config['username']
                 );
-            } catch (\PHPMailer\PHPMailer\Exception $exception) {
-                throw new \RuntimeException($exception->getMessage(), $exception->getCode(), $exception);
+            } catch (MailSendException $exception) {
+                throw new RuntimeException($exception->getMessage(), $exception->getCode(), $exception);
             }
         }
 
         if (array_key_exists('replyto_address', $this->config)) {
             try {
                 $this->phpMailer->addReplyTo($this->config['replyto_address'], $this->config['replyto_name']);
-            } catch (\PHPMailer\PHPMailer\Exception $exception) {
-                throw new \RuntimeException($exception->getMessage(), $exception->getCode(), $exception);
+            } catch (MailSendException $exception) {
+                throw new RuntimeException($exception->getMessage(), $exception->getCode(), $exception);
             }
         }
     }
@@ -202,7 +200,7 @@ class Mailer
      *
      * @return void
      *
-     * @throws \RuntimeException
+     * @throws RuntimeException
      */
     private function setAttachments(Template $template): void
     {
@@ -212,8 +210,8 @@ class Mailer
                     $attachment->getPath(),
                     $attachment->getName()
                 );
-            } catch (\PHPMailer\PHPMailer\Exception $exception) {
-                throw new \RuntimeException($exception->getMessage(), $exception->getCode(), $exception);
+            } catch (MailSendException $exception) {
+                throw new RuntimeException($exception->getMessage(), $exception->getCode(), $exception);
             }
         }
     }
