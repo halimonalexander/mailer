@@ -113,15 +113,13 @@ class Mailer
         $this->phpMailer->Username   = $this->config['address'];
         $this->phpMailer->Password   = $this->config['password'];
 
-        if (array_key_exists('address', $this->config)) {
-            try {
-                $this->phpMailer->setFrom(
-                    $this->config['address'],
-                    $this->config['username']
-                );
-            } catch (MailSendException $exception) {
-                throw new RuntimeException($exception->getMessage(), $exception->getCode(), $exception);
-            }
+        try {
+            $this->phpMailer->setFrom(
+                $this->config['address'],
+                $this->config['username']
+            );
+        } catch (MailSendException $exception) {
+            throw new RuntimeException($exception->getMessage(), $exception->getCode(), $exception);
         }
 
         if (array_key_exists('replyto_address', $this->config)) {

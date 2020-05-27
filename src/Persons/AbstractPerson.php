@@ -45,6 +45,11 @@ abstract class AbstractPerson
         return $this->email;
     }
 
+    /**
+     * @param string $email
+     *
+     * @return void
+     */
     private function setEmail(string $email): void
     {
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -62,6 +67,11 @@ abstract class AbstractPerson
         return $this->name;
     }
 
+    /**
+     * @param string|null $name
+     *
+     * @return void
+     */
     public function setName(?string $name): void
     {
         if ($name !== null && empty($name)) {

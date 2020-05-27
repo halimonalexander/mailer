@@ -1,6 +1,6 @@
 {
   "name": "halimonalexander/mailer",
-  "description": "Mailer library",
+  "description": "PHPMailer decorator",
   "homepage": "https://github.com/halimonalexander/mailer",
   "license": "BSD-3-Clause",
   "authors": [
