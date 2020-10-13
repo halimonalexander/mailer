@@ -17,20 +17,9 @@ use RuntimeException;
 
 abstract class AbstractPerson
 {
-    /**
-     * @var string
-     */
-    private $email;
+    private string $email;
+    private ?string $name;
 
-    /**
-     * @var string|null
-     */
-    private $name;
-
-    /**
-     * @param string $email
-     * @param string|null $name
-     */
     function __construct(string $email, string $name = null)
     {
         $this->setEmail($email);

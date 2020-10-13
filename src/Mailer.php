@@ -15,9 +15,7 @@ namespace HalimonAlexander\Mailer;
 
 use HalimonAlexander\Mailer\Persons\Recipient;
 
-use HalimonAlexander\MailTemplater\{
-    Template
-};
+use HalimonAlexander\MailTemplater\{Template, TemplateInterface};
 
 use PHPMailer\PHPMailer\{
   PHPMailer,
@@ -30,17 +28,10 @@ use InvalidArgumentException;
 
 class Mailer
 {
-    /**
-     * @var PHPMailer
-     */
-    private $phpMailer;
-
-    /**
-     * @var array
-     */
-    private $config;
+    private PHPMailer $phpMailer;
+    private array $config;
   
-    public function __construct($config)
+    public function __construct(array $config)
     {
         $this->config = $config;
 
@@ -133,11 +124,11 @@ class Mailer
   
     /**
      * @param Recipient|Recipient[] $recipients
-     * @param Template $template
+     * @param TemplateInterface $template
      *
      * @return bool
      */
-    public function doSend($recipients, Template $template)
+    public function doSend($recipients, TemplateInterface $template)
     {
         $this->setRecipients($recipients);
         $this->setSubject($template);
@@ -175,12 +166,12 @@ class Mailer
         }
     }
 
-    private function setSubject(Template $template): void
+    private function setSubject(TemplateInterface $template): void
     {
         $this->phpMailer->Subject = $template->getSubject();
     }
 
-    private function setBody(Template $template): void
+    private function setBody(TemplateInterface $template): void
     {
         $htmlBody = $template->getHtmlBody();
         if (!empty($htmlBody)) {
@@ -200,7 +191,7 @@ class Mailer
      *
      * @throws RuntimeException
      */
-    private function setAttachments(Template $template): void
+    private function setAttachments(TemplateInterface $template): void
     {
         foreach ($template->getAttachments() as $attachment) {
             try {
